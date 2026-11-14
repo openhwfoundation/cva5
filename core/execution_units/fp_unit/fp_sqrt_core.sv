@@ -31,6 +31,7 @@ module fp_sqrt_core
 
     typedef logic[$clog2(sqrt.DATA_WIDTH)-1:0] counter_t;
     typedef logic[sqrt.DATA_WIDTH-1:0] frac_t;
+    typedef logic[sqrt.DATA_WIDTH+1:0] rem_t;
 
     ////////////////////////////////////////////////////
     //Radix 2 square root
@@ -58,27 +59,24 @@ module fp_sqrt_core
     ////////////////////////////////////////////////////
     //Subtraction
     frac_t rad;
-    frac_t current_subtractend;
-    frac_t next_subtractend;
-    frac_t subtractor;
-    frac_t subtraction;
+    rem_t current_subtractend;
+    rem_t next_subtractend;
+    rem_t subtractor;
+    rem_t subtraction;
+    rem_t kept;
     logic overflow;
 
-    assign subtractor = {sqrt.result[sqrt.DATA_WIDTH-3:0], 2'b01};
+    assign subtractor = {sqrt.result, 2'b01};
     assign {overflow, subtraction} = current_subtractend - subtractor;
-
+    assign kept = overflow ? current_subtractend : subtraction;
+    
     ////////////////////////////////////////////////////
     //Next Working subtractend Determination
-    always_comb begin
-        if (overflow)
-            next_subtractend = {current_subtractend[sqrt.DATA_WIDTH-3:0], rad[sqrt.DATA_WIDTH-1-:2]};
-        else
-            next_subtractend = {subtraction[sqrt.DATA_WIDTH-3:0], rad[sqrt.DATA_WIDTH-1-:2]};
-    end
+    assign next_subtractend = {kept[sqrt.DATA_WIDTH-1:0], rad[sqrt.DATA_WIDTH-1-:2]};
 
     always_ff @(posedge clk) begin
         if (sqrt.start) //First working subtractend extracts the upper 2 bits of the radicand
-            current_subtractend <= {{(sqrt.DATA_WIDTH-2){1'b0}}, sqrt.radicand[sqrt.DATA_WIDTH-1-:2]};
+            current_subtractend <= {{(sqrt.DATA_WIDTH){1'b0}}, sqrt.radicand[sqrt.DATA_WIDTH-1-:2]};
         else
             current_subtractend <= next_subtractend;
     end
@@ -102,7 +100,7 @@ module fp_sqrt_core
         else if (|counter) begin
             //Shift in new quotient bit
             sqrt.result <= {sqrt.result[sqrt.DATA_WIDTH-2:0], ~overflow};
-            sqrt.remainder <= next_subtractend;
+            sqrt.remainder[0] <= |kept;
         end
     end
 
