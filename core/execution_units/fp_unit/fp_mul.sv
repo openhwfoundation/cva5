@@ -64,7 +64,7 @@ module fp_mul
     assign inf[0] = ((mul_args.rs1_special_case.inf & ~mul_args.rs2_special_case.zero) | (~mul_args.rs1_special_case.zero & mul_args.rs2_special_case.inf)) & ~qnan[0];
     assign true_zero[0] = (mul_args.rs1_special_case.zero | mul_args.rs2_special_case.zero) & ~qnan[0];
     //The exponent logic can only handle 1 subnormal argument. 2 subnormals produces 0 mantissa but a set sticky bit
-    assign subnormal_zero[0] = ~mul_args.rs1_hidden & ~mul_args.rs2_hidden & ~true_zero[0];
+    assign subnormal_zero[0] = ~mul_args.rs1_hidden & ~mul_args.rs2_hidden & ~true_zero[0] & ~qnan[0];
 
     //Unpacking
     id_t id[2:0];

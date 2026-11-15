@@ -41,20 +41,16 @@ module fp_div
     //Iterative divider core, bypassed on special cases
     logic result_sign;
     logic busy;
-    logic new_request_r;
     assign issue.ready = ~busy | wb.ack;
 
     always_ff @(posedge clk) begin
-        if (rst) begin
+        if (rst)
             busy <= 0;
-            new_request_r <= 0;
-        end
         else begin
             if (wb.ack)
                 busy <= 0;
             if (issue.new_request)
                 busy <= 1;
-            new_request_r <= issue.new_request;
         end
         if (issue.new_request)
             result_sign <= args.rs1.d.sign ^ args.rs2.d.sign;
@@ -81,10 +77,10 @@ module fp_div
     always_ff @(posedge clk) begin
         if (rst)
             early_exit <= 0;
-        else if (wb.ack)
-            early_exit <= 0;
         else if (issue.new_request)
             early_exit <= qnan | inf | zero;
+        else if (wb.ack)
+            early_exit <= 0;
         
         if (issue.new_request) begin
             nv_r <= nv;
@@ -174,7 +170,7 @@ module fp_div
     end
 
     always_comb begin
-        if (new_request_r)
+        if (early_exit) //Held until acknowledged (the square root unit can delay the ack)
             wb.rd = special_result;
         else begin
             wb.rd.d.sign = result_sign;
@@ -183,7 +179,7 @@ module fp_div
         end
     end
     //Note that this overflow detection also captures subnormal numbers but they are ignored when subnormal is set
-    assign wb.expo_overflow = expo_intermediate_r[EXPO_WIDTH] & ~new_request_r;
+    assign wb.expo_overflow = expo_intermediate_r[EXPO_WIDTH] & ~early_exit;
     assign wb.fflags.nv = nv_r;
     assign wb.fflags.dz = dz_r;
     //Set in writeback
@@ -192,12 +188,12 @@ module fp_div
     assign wb.fflags.nx = 0;
     assign wb.carry = 0;
     assign wb.safe = 0;
-    assign wb.hidden = (new_request_r & ~zero_r) | (~new_request_r & result_hidden);
-    assign wb.grs = new_request_r ? '0 : {result_gr, div.remainder, {(GRS_WIDTH-FRAC_WIDTH-5){1'b0}}};
-    assign wb.clz = new_request_r ? '0 : left_shift_amt;
-    assign wb.subnormal = ~new_request_r & right_shift;
-    assign wb.right_shift = ~new_request_r & right_shift;
+    assign wb.hidden = (early_exit & ~zero_r) | (~early_exit & result_hidden);
+    assign wb.grs = early_exit ? '0 : {result_gr, div.remainder, {(GRS_WIDTH-FRAC_WIDTH-5){1'b0}}};
+    assign wb.clz = early_exit ? '0 : left_shift_amt;
+    assign wb.subnormal = ~early_exit & right_shift;
+    assign wb.right_shift = ~early_exit & right_shift;
     assign wb.right_shift_amt = right_shift_amt;
-    assign wb.ignore_max_expo = new_request_r;
+    assign wb.ignore_max_expo = early_exit;
 
 endmodule

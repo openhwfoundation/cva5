@@ -41,20 +41,16 @@ module fp_sqrt
     //Implementation
     //Iterative square root core, bypassed on special cases
     logic busy;
-    logic new_request_r;
     assign issue.ready = ~busy | wb.ack;
 
     always_ff @(posedge clk) begin
-        if (rst) begin
+        if (rst)
             busy <= 0;
-            new_request_r <= 0;
-        end
         else begin
             if (wb.ack)
                 busy <= 0;
             if (issue.new_request)
                 busy <= 1;
-            new_request_r <= issue.new_request;
         end
     end
 
@@ -79,10 +75,10 @@ module fp_sqrt
     always_ff @(posedge clk) begin
         if (rst)
             early_exit <= 0;
-        else if (wb.ack)
-            early_exit <= 0;
         else if (issue.new_request)
             early_exit <= inf | zero | qnan;
+        else if (wb.ack)
+            early_exit <= 0;
         
         if (issue.new_request) begin
             result_sign <= args.rs1.d.sign;
@@ -152,7 +148,7 @@ module fp_sqrt
         else
             sqrt_hold <= ~wb.ack & (sqrt.done | sqrt_hold);
     end
-    
+
     always_ff @(posedge clk) begin
         if (issue.new_request) begin
             wb.id <= issue.id;
@@ -162,7 +158,7 @@ module fp_sqrt
     end
 
     always_comb begin
-        if (new_request_r)
+        if (early_exit)
             wb.rd = special_result;
         else begin
             wb.rd.d.sign = 0;
@@ -170,7 +166,7 @@ module fp_sqrt
             wb.rd.d.frac = result_frac;
         end
         wb.grs = '0;
-        if (~new_request_r) begin
+        if (~early_exit) begin
             wb.grs[GRS_WIDTH-1-:4] = result_grs;
             wb.grs[GRS_WIDTH-5-:FRAC_WIDTH+5] = sqrt.remainder;
         end
@@ -184,7 +180,7 @@ module fp_sqrt
     assign wb.carry = 0;
     assign wb.safe = 0;
     assign wb.subnormal = 0;
-    assign wb.hidden = (new_request_r & ~zero_r) | (~new_request_r & result_hidden);
+    assign wb.hidden = (early_exit & ~zero_r) | (~early_exit & result_hidden);
     assign wb.clz = '0;
     assign wb.right_shift = 0;
     assign wb.right_shift_amt = 'x;

@@ -77,10 +77,10 @@ module fp_wb2int_misc
         fclass_rd = '0;
         fclass_rd[0] = args.rs1.d.sign & args.rs1_special_case.inf;
         fclass_rd[1] = args.rs1.d.sign & args.rs1_original_hidden_bit & ~|args.rs1_special_case;
-        fclass_rd[2] = args.rs1.d.sign & ~args.rs1_original_hidden_bit & ~args.rs1_special_case.zero;
+        fclass_rd[2] = args.rs1.d.sign & ~args.rs1_original_hidden_bit & ~args.rs1_special_case.zero & ~args.rs1_special_case.qnan;
         fclass_rd[3] = args.rs1.d.sign & args.rs1_special_case.zero;
         fclass_rd[4] = ~args.rs1.d.sign & args.rs1_special_case.zero;
-        fclass_rd[5] = ~args.rs1.d.sign & ~args.rs1_original_hidden_bit & ~args.rs1_special_case.zero;
+        fclass_rd[5] = ~args.rs1.d.sign & ~args.rs1_original_hidden_bit & ~args.rs1_special_case.zero & ~args.rs1_special_case.qnan;
         fclass_rd[6] = ~args.rs1.d.sign & args.rs1_original_hidden_bit & ~|args.rs1_special_case;
         fclass_rd[7] = ~args.rs1.d.sign & args.rs1_special_case.inf;
         fclass_rd[8] = args.rs1_special_case.snan;
